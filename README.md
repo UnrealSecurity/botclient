@@ -1,6 +1,9 @@
 # botclient.js
 Bot client for hack.chat written in JavaScript (browser &amp; nodejs)
 
+### Required modules if using NodeJS
+ws atob btoa
+
 ### Example bot
 ```javascript
 const Bot = require('./botclient.js');
