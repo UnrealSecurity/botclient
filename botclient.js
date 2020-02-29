@@ -66,18 +66,6 @@ function Bot(nick, channel, password = null) {
     }
 
     this.Commands = {};
-    /*
-            test: {
-                available: (args)=>{ return args.trip === bot.owner; },
-                run: (args, pars, arr)=>{
-                    bot.Say('```JS\n'+JSON.stringify({args:args, pars:pars, arr:arr}, null, 2)+'\n```');
-                },
-            },
-
-            "test"       -> command name
-            "available"  -> check if the command is available to certain user, this property is optional
-            "run"        -> function that handles the command, takes 3 parameters (args, pars, arr)
-    */
 
     this.Connect = () => {
         this.ws = new WebSocket(this.url);
