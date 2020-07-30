@@ -1,9 +1,9 @@
 const browser = typeof(window)!='undefined';
 
 if (!browser) {
-    var WebSocket = require('ws');
-    var atob = require('atob');
-    var btoa = require('btoa');
+	var WebSocket = require('ws');
+	var atob = require('atob');
+	var btoa = require('btoa');
 }
 
 function ICrypt(t,e){this.CharsToBytes=(t=>t.map(function(t){return t.charCodeAt(0)})),this.StringToBytes=(t=>this.CharsToBytes(t.split(""))),this.BytesToChars=(t=>t.map(function(t){return String.fromCharCode(parseInt(t,10))})),this.BytesToString=(t=>this.BytesToChars(t).join("")),this.DecToOctBytes=(t=>t.map(function(t){return("000"+t.toString(8)).substr(-3)})),this.OctToDecBytes=(t=>t.map(function(t){return parseInt(t,8)})),this.Uint8ArrayToIntArray=(t=>{var e=[];for(let r=0;r<t.length;r++)e[r]=t[r];return e}),this.Expand=((t,e,r=8)=>{var s,n=new Uint8Array(t.length*e);for(let e=0;e<n.length;e++){for(let r=0;r<t.length&&!(e+r>=n.length);r++)n[e+r]=t[r];e=e+t.length-1}for(let t=0;t<n.length;t++){if(t==n.length-1){n[t]=n[t]^n[0];break}n[t]=n[t]^n[t+1],n[n.length-t-1]=3^n[n.length-t-1]}s=n,n=new Uint8Array(2*n.length);for(let t=0;t<s.length-1;t+=2){var h=8^s[t],i=13^s[t+1];n[t]=i,n[t+1]=h,n[n.length-1-t]=255^h+i}var a=255;for(let t=0;t<n.length;t++){var o=n[t],l=2*r^255^a;n[t]=o^l,a--,r=n[t],0==a&&(a=255)}return n}),this.Encrypt=(t=>{t=new Uint8Array(t);var e=this.Expand(this.password,Math.floor(t.length/this.password.length)+1,8),r=this.Expand(this.salt,Math.floor(t.length/this.salt.length)+1,8),s=new Uint8Array(t.length);for(let h=t.length-1;h>-1;h--){var n=e[t.length-h]^r[h]^t[h];s[h]=n}return s}),this.password=this.OctToDecBytes(this.DecToOctBytes(this.CharsToBytes(t.split("")))),this.salt=this.OctToDecBytes(this.DecToOctBytes(this.CharsToBytes(e.split(""))))}
@@ -16,7 +16,7 @@ function crypt(str, password, salt="") {
 
 function Bot(nick, channel, password = null) {
     this.url = 'wss://hack.chat/chat-ws';
-    this.owner = '';
+	this.owner = '';
     this.nick = nick;
     this.password = password;
     this.channel = channel;
@@ -27,11 +27,14 @@ function Bot(nick, channel, password = null) {
     this.onConnect = null; /* ()=>{...} */
     this.onMessage = null; /* (args)=>{...} */
     this.onDisconnect = null; /* ()=>{...} */
+    this.onOnlineSet = null; /* (nicks)=>{...} */
     this.onUserJoin = null; /* (args)=>{...} */
     this.onUserLeave = null; /* (args)=>{...} */
     this.onAccessDenied = null; /* (args, cmd, pars, arr)=>{...} */
     this.onUnknownCommand = null; /* (args, cmd)=>{...} */
-    this.onUserToggleEncryption = null; /* (nick, encryptionEnabled)=>{...} */
+	this.onUserToggleEncryption = null; /* (nick, encryptionEnabled)=>{...} */
+
+    this.Commands = {};
 
     //tetherapp
     this.tether = {
@@ -65,8 +68,6 @@ function Bot(nick, channel, password = null) {
         }
     }
 
-    this.Commands = {};
-
     this.Connect = () => {
         this.ws = new WebSocket(this.url);
         this.ws.onopen = () => {
@@ -79,27 +80,28 @@ function Bot(nick, channel, password = null) {
         }
         this.ws.onmessage = (e) => {
             var args = JSON.parse(e.data);
-            
-            switch (args.cmd) {
-                case 'onlineSet':
+			
+			switch (args.cmd) {
+				case 'onlineSet':
                     this.onlineUsers = args.nicks;
                     broadcastKey(true, this);
-                    break;
-                case 'onlineAdd':
+                    if (this.onOnlineSet!=null) this.onOnlineSet(args.nicks);
+					break;
+				case 'onlineAdd':
                     this.onlineUsers.push(args.nick);
                     if (this.onUserJoin!=null) this.onUserJoin(args);
                     broadcastKey(true, this);
-                    break;
-                case 'onlineRemove':
-                    var n = this.onlineUsers.indexOf(args.nick);
-                    if (n >= 0) {
-                        this.onlineUsers.splice(n, 1);
+					break;
+				case 'onlineRemove':
+					var n = this.onlineUsers.indexOf(args.nick);
+					if (n >= 0) {
+						this.onlineUsers.splice(n, 1);
                     }
                     if (this.tether.enabled) {
                         if (this.tether.userKeys.hasOwnProperty(args.nick)) delete this.tether.userKeys[args.nick];
                     }
                     if (this.onUserLeave!=null) this.onUserLeave(args);
-                    break;
+					break;
             }
             
             if (args.hasOwnProperty('text')) {
@@ -109,15 +111,15 @@ function Bot(nick, channel, password = null) {
                     var key = args.text.substr(this.tether.keyPrefix.length);
                     if (key.length>0) {
                         this.tether.userKeys[args.nick] = key;
-                        if (this.onUserToggleEncryption!=null) this.onUserToggleEncryption(args.nick, true);
+						if (this.onUserToggleEncryption!=null) this.onUserToggleEncryption(args.nick, true);
                     } else {
                         delete this.tether.userKeys[args.nick];
-                        if (this.onUserToggleEncryption!=null) this.onUserToggleEncryption(args.nick, false);
+						if (this.onUserToggleEncryption!=null) this.onUserToggleEncryption(args.nick, false);
                     }
                     return;
                 }
             }
-            
+			
             if (args.hasOwnProperty('text')) {
                 args.tether = {
                     encrypted: false,
@@ -131,9 +133,9 @@ function Bot(nick, channel, password = null) {
                     }
                 }
 
-                var arr1 = this.Parse(args.text);
+				var arr1 = this.Parse(args.text);
                 if (arr1.length > 0 && typeof(arr1[0])!='undefined' && this.Commands.hasOwnProperty(arr1[0].substr(this.trigger.length)) && arr1[0].startsWith(this.trigger)) {
-                    var arr2 = args.text.split(' ');
+				    var arr2 = args.text.split(' ');
                     var cmd = arr1[0].substr(this.trigger.length).toLowerCase();
                     arr1.shift();
                     arr2.shift();
